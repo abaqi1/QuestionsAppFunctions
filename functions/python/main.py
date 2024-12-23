@@ -7,7 +7,8 @@ from config.firebase_config import FIREBASE_CONFIG
 from db_accessor import (
     get_groups,
     get_users,
-    get_group
+    get_group,
+    add_message,
 )
 
 # Set region for functions
@@ -17,3 +18,4 @@ options.set_global_options(region="us-central1")
 get_groups_endpoint = get_groups
 get_users_endpoint = get_users
 get_group_endpoint = get_group
+add_message_endpoint = add_message
