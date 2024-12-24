@@ -9,6 +9,7 @@ from db_accessor import (
     get_users,
     get_group,
     add_message,
+    generate_group_question
 )
 
 # Set region for functions
@@ -19,3 +20,4 @@ get_groups_endpoint = get_groups
 get_users_endpoint = get_users
 get_group_endpoint = get_group
 add_message_endpoint = add_message
+generate_group_question_endpoint = generate_group_question

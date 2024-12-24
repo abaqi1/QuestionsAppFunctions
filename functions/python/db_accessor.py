@@ -10,7 +10,7 @@ import os
 from config.firebase_config import FIREBASE_CONFIG
 import uuid
 from datetime import datetime
-from google.cloud.firestore_v1.transforms import Timestamp
+# from google.cloud.firestore_v1.transforms import Timestamp
 
 
 # Initialize Firebase Admin
@@ -225,7 +225,6 @@ def add_message(request: https_fn.Request) -> https_fn.Response:
         
         # Generate a UUID for the message
         message_id = str(uuid.uuid4())
-        current_time = datetime.utcnow()
 
         # Create message document with timestamp
         message_data = {
@@ -234,7 +233,7 @@ def add_message(request: https_fn.Request) -> https_fn.Response:
             "user": {
                 "_id": sender_id
             },
-            "createdAt": Timestamp.from_datetime(current_time)
+            "createdAt": datetime.utcnow()
         }
         
         # First update the messages array
@@ -249,6 +248,92 @@ def add_message(request: https_fn.Request) -> https_fn.Response:
                 "data": {
                     "messageId": message_id,
                     "groupId": group_id
+                }
+            }, default=str),
+            headers={"Content-Type": "application/json"}
+        )
+        
+    except Exception as e:
+        return https_fn.Response(
+            response=json.dumps({
+                "success": False,
+                "error": str(e)
+            }),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+    
+@https_fn.on_request()
+def generate_group_question(request: https_fn.Request) -> https_fn.Response:
+    try:
+        # Get group ID from request
+        data = request.get_json()
+        group_id = data.get('groupId')
+        
+        if not group_id:
+            return https_fn.Response(
+                response=json.dumps({
+                    "success": False,
+                    "error": "Group ID is required"
+                }),
+                status=400,
+                headers={"Content-Type": "application/json"}
+            )
+        
+        db = firestore.client()
+        
+        # Get group data
+        group_ref = db.collection('groups').document(group_id)
+        group_doc = group_ref.get()
+        
+        if not group_doc.exists:
+            return https_fn.Response(
+                response=json.dumps({
+                    "success": False,
+                    "error": "Group not found"
+                }),
+                status=404,
+                headers={"Content-Type": "application/json"}
+            )
+        
+        group_data = group_doc.to_dict()
+        
+        # Get group interests and dynamics
+        interests = group_data.get('interests', [])
+        dynamics = group_data.get('dynamics', [])
+        
+        # Get previous questions to avoid repetition
+        previous_questions = [msg.get('text') for msg in group_data.get('messages', []) 
+                            if msg.get('text')]
+        
+        # Generate new question
+        from question_agent import QuestionGenerator
+        generator = QuestionGenerator()
+        
+        new_question = generator.generate_question(
+            group_dynamic=dynamics,
+            interests=interests,
+            previous_questions=previous_questions
+        )
+        
+        # Add question to next_questions array
+        if 'next_questions' not in group_data:
+            group_ref.update({'next_questions': []})
+        
+        group_ref.update({
+            'next_questions': firestore.ArrayUnion([{
+                '_id': str(uuid.uuid4()),
+                'text': new_question,
+                'createdAt': datetime.utcnow()
+            }])
+        })
+        
+        return https_fn.Response(
+            response=json.dumps({
+                "success": True,
+                "data": {
+                    "groupId": group_id,
+                    "question": new_question
                 }
             }, default=str),
             headers={"Content-Type": "application/json"}
