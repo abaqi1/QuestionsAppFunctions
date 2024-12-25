@@ -1,0 +1,42 @@
+{
+    "functions": [
+        {
+            "source": "functions/typescript",
+            "codebase": "typescript",
+            "ignore": [
+                "node_modules",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log"
+            ],
+            "runtime": "nodejs18"
+        },
+        {
+            "source": "functions/python",
+            "codebase": "python",
+            "entryPoint": "db_accessor",
+            "ignore": [
+                "venv",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log"
+            ],
+            "runtime": "python311"
+        }
+    ],
+    "emulators": {
+        "functions": {
+            "port": 5002
+        },
+        "firestore": {
+            "port": 8080
+        },
+        "auth": {
+            "port": 9099
+        },
+        "ui": {
+            "enabled": true,
+            "port": 4002
+        }
+    }
+}
