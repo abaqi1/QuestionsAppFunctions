@@ -1,6 +1,8 @@
 from firebase_functions import https_fn
 import json
-from firebase_admin import firestore
+import uuid
+from datetime import datetime
+from firebase_admin import firestore, messaging
 from python.utils.firebase_init import db
 
 @https_fn.on_request()
@@ -36,6 +38,7 @@ def post_next_question(request: https_fn.Request) -> https_fn.Response:
         
         group_data = group_doc.to_dict()
         next_questions = group_data.get('next_questions', [])
+        group_name = group_data.get('name', '')
         
         # Check if there are any questions in the queue
         if not next_questions:
@@ -75,6 +78,26 @@ def post_next_question(request: https_fn.Request) -> https_fn.Response:
         transaction = db.transaction()
         update_in_transaction(transaction, group_ref)
         
+                # After successful transaction, send notification to all iOS users
+        try:
+            
+            # Define the message payload
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=group_name,
+                    body=next_question['text']
+                ),
+                token="USER_TOKEN_HERE"
+            )
+
+            # Send the message
+            response = messaging.send(message)
+            print('Successfully sent message:', response)
+        except Exception as e:
+            print('Error sending notification:', str(e))
+        
+
+
         return https_fn.Response(
             response=json.dumps({
                 "success": True,
@@ -87,6 +110,8 @@ def post_next_question(request: https_fn.Request) -> https_fn.Response:
             }, default=str),
             headers={"Content-Type": "application/json"}
         )
+
+    # SEND NOTIFICATION TO GRoup Topic 
         
     except Exception as e:
         return https_fn.Response(
